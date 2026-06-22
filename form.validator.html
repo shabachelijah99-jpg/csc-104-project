@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registration Form Validator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0f172a; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .form-card { background: white; border-radius: 16px; padding: 36px; max-width: 480px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+  h1 { text-align: center; color: #1a1a2e; font-size: 1.4rem; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: #888; font-size: 0.85rem; margin-bottom: 28px; }
+  .field { margin-bottom: 20px; }
+  label { display: block; font-size: 0.85rem; font-weight: 700; color: #444; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .4px; }
+  input { width: 100%; padding: 12px 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95rem; transition: border-color .2s; outline: none; }
+  input:focus { border-color: #4f46e5; }
+  input.valid   { border-color: #28a745; }
+  input.invalid { border-color: #dc3545; }
+  .feedback { font-size: 0.8rem; margin-top: 5px; min-height: 18px; }
+  .feedback.ok  { color: #28a745; }
+  .feedback.err { color: #dc3545; }
+  .rules { list-style: none; margin-top: 6px; }
+  .rules li { font-size: 0.78rem; margin-bottom: 3px; padding-left: 18px; position: relative; color: #888; }
+  .rules li::before { content: '✗'; position: absolute; left: 0; color: #dc3545; }
+  .rules li.met::before { content: '✓'; color: #28a745; }
+  .rules li.met { color: #555; }
+  .submit-btn { width: 100%; padding: 14px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 8px; transition: background .2s; }
+  .submit-btn:hover { background: #4338ca; }
+  .submit-btn:disabled { background: #aaa; cursor: not-allowed; }
+  .success-msg { display: none; background: #d4edda; color: #155724; border-radius: 8px; padding: 14px; text-align: center; font-weight: 600; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="form-card">
+  <h1>📝 Create Account</h1>
+  <p class="subtitle">Fill in all fields correctly to register</p>
+
+  <!-- USERNAME -->
+  <div class="field">
+    <label>Username</label>
+    <input type="text" id="username" placeholder="e.g. john_doe123" oninput="validateUsername()">
+    <div class="feedback" id="userFb"></div>
+    <ul class="rules" id="userRules">
+      <li id="rule-alpha">Alphanumeric characters only (a-z, 0-9, _)</li>
+      <li id="rule-len">5–15 characters long</li>
+    </ul>
+  </div>
+
+  <!-- PASSWORD -->
+  <div class="field">
+    <label>Password</label>
+    <input type="password" id="password" placeholder="Min 8 characters" oninput="validatePassword()">
+    <div class="feedback" id="passFb"></div>
+    <ul class="rules" id="passRules">
+      <li id="rule-min8">At least 8 characters</li>
+      <li id="rule-upper">At least one uppercase letter (A-Z)</li>
+      <li id="rule-digit">At least one digit (0-9)</li>
+      <li id="rule-special">At least one special character (!@#$%^&*)</li>
+    </ul>
+  </div>
+
+  <!-- PHONE -->
+  <div class="field">
+    <label>Nigerian Phone Number</label>
+    <input type="tel" id="phone" placeholder="+2348012345678" oninput="validatePhone()">
+    <div class="feedback" id="phoneFb"></div>
+    <ul class="rules">
+      <li id="rule-phone">+234 followed by 10 digits (e.g. +2348012345678)</li>
+    </ul>
+  </div>
+
+  <button class="submit-btn" id="submitBtn" onclick="submitForm()" disabled>Create Account</button>
+  <div class="success-msg" id="successMsg">🎉 Registration Successful! Welcome aboard.</div>
+</div>
+
+<script>
+// ── VALIDATION STATES ────────────────────────────────────
+const valid = { username: false, password: false, phone: false };
+
+// ── REGEX PATTERNS ────────────────────────────────────────
+const patterns = {
+  username:   /^[a-zA-Z0-9_]{5,15}$/,
+  uppercase:  /[A-Z]/,
+  digit:      /[0-9]/,
+  special:    /[!@#$%^&*(),.?":{}|<>]/,
+  phone:      /^\+234[0-9]{10}$/,
+  alphaNum:   /^[a-zA-Z0-9_]+$/,
+};
+
+// ── USERNAME VALIDATION ──────────────────────────────────
+function validateUsername() {
+  const val = document.getElementById("username").value;
+  const inp = document.getElementById("username");
+  const fb  = document.getElementById("userFb");
+
+  const isAlpha  = patterns.alphaNum.test(val);
+  const isLength = val.length >= 5 && val.length <= 15;
+
+  toggleRule("rule-alpha",  isAlpha);
+  toggleRule("rule-len",    isLength);
+
+  if (isAlpha && isLength) {
+    setInput(inp, "valid");
+    setFb(fb, "✅ Username looks good!", "ok");
+    valid.username = true;
+  } else {
+    setInput(inp, val.length === 0 ? "" : "invalid");
+    setFb(fb, val.length === 0 ? "" : "❌ Fix the errors above.", "err");
+    valid.username = false;
+  }
+  checkSubmit();
+}
+
+// ── PASSWORD VALIDATION ──────────────────────────────────
+function validatePassword() {
+  const val  = document.getElementById("password").value;
+  const inp  = document.getElementById("password");
+  const fb   = document.getElementById("passFb");
+
+  const checks = {
+    "rule-min8":   val.length >= 8,
+    "rule-upper":  patterns.uppercase.test(val),
+    "rule-digit":  patterns.digit.test(val),
+    "rule-special":patterns.special.test(val),
+  };
+
+  let allMet = true;
+  for (const [id, met] of Object.entries(checks)) {
+    toggleRule(id, met);
+    if (!met) allMet = false;
+  }
+
+  if (allMet) {
+    setInput(inp, "valid");
+    setFb(fb, "✅ Strong password!", "ok");
+    valid.password = true;
+  } else {
+    setInput(inp, val.length === 0 ? "" : "invalid");
+    setFb(fb, val.length === 0 ? "" : "❌ Password is too weak.", "err");
+    valid.password = false;
+  }
+  checkSubmit();
+}
+
+// ── PHONE VALIDATION ─────────────────────────────────────
+function validatePhone() {
+  const val = document.getElementById("phone").value.trim();
+  const inp = document.getElementById("phone");
+  const fb  = document.getElementById("phoneFb");
+
+  const ok = patterns.phone.test(val);
+  toggleRule("rule-phone", ok);
+
+  if (ok) {
+    setInput(inp, "valid");
+    setFb(fb, "✅ Valid Nigerian number!", "ok");
+    valid.phone = true;
+  } else {
+    setInput(inp, val.length === 0 ? "" : "invalid");
+    setFb(fb, val.length === 0 ? "" : "❌ Must be +234 followed by 10 digits.", "err");
+    valid.phone = false;
+  }
+  checkSubmit();
+}
+
+// ── HELPERS ──────────────────────────────────────────────
+function setInput(el, state) {
+  el.className = state;   // '', 'valid', or 'invalid'
+}
+
+function setFb(el, text, cls) {
+  el.textContent = text;
+  el.className   = "feedback " + cls;
+}
+
+function toggleRule(id, met) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle("met", met);
+}
+
+function checkSubmit() {
+  document.getElementById("submitBtn").disabled = !(valid.username && valid.password && valid.phone);
+}
+
+function submitForm() {
+  document.getElementById("successMsg").style.display = "block";
+  document.getElementById("submitBtn").disabled = true;
+}
+</script>
+</body>
+</html>
