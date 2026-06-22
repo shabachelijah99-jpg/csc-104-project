@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interactive Quiz</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #1e1e2e; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+  .quiz-card { background: white; border-radius: 16px; padding: 36px; max-width: 560px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+  .progress-bar { height: 6px; background: #eee; border-radius: 3px; margin-bottom: 24px; }
+  .progress-fill { height: 100%; background: #4f46e5; border-radius: 3px; transition: width .4s; }
+  .question-num { font-size: 0.8rem; color: #888; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; }
+  .question-text { font-size: 1.15rem; font-weight: 700; color: #1a1a2e; margin-bottom: 24px; line-height: 1.5; }
+  .options { display: flex; flex-direction: column; gap: 12px; }
+  .option-btn {
+    padding: 14px 18px; border: 2px solid #e0e0e0; border-radius: 10px;
+    background: white; text-align: left; cursor: pointer; font-size: 0.95rem;
+    transition: all .2s; color: #333;
+  }
+  .option-btn:hover:not(:disabled) { border-color: #4f46e5; background: #f0f0ff; }
+  .option-btn.correct  { background: #d4edda; border-color: #28a745; color: #155724; }
+  .option-btn.wrong    { background: #f8d7da; border-color: #dc3545; color: #721c24; }
+  .option-btn.reveal   { background: #d4edda; border-color: #28a745; color: #155724; }
+  .option-btn:disabled { cursor: not-allowed; }
+  .feedback { margin-top: 16px; font-size: 0.95rem; font-weight: 600; min-height: 22px; }
+  .feedback.correct { color: #28a745; }
+  .feedback.wrong   { color: #dc3545; }
+  .next-btn { margin-top: 20px; width: 100%; padding: 14px; background: #4f46e5; color: white; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; display: none; }
+  .next-btn:hover { background: #4338ca; }
+  /* Score screen */
+  .score-screen { text-align: center; }
+  .score-screen .score-big { font-size: 3.5rem; font-weight: 800; color: #4f46e5; margin: 16px 0; }
+  .score-screen .grade { font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; }
+  .score-screen .remark { font-size: 1rem; color: #555; margin-bottom: 24px; }
+  .restart-btn { padding: 14px 32px; background: #4f46e5; color: white; border: none; border-radius: 10px; font-size: 1rem; cursor: pointer; }
+  .restart-btn:hover { background: #4338ca; }
+</style>
+</head>
+<body>
+<div class="quiz-card" id="quizCard">
+
+  <!-- PROGRESS -->
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+  <!-- QUESTION AREA -->
+  <div id="questionArea">
+    <div class="question-num" id="questionNum"></div>
+    <div class="question-text" id="questionText"></div>
+    <div class="options" id="optionsContainer"></div>
+    <div class="feedback" id="feedback"></div>
+    <button class="next-btn" id="nextBtn" onclick="nextQuestion()">Next Question →</button>
+  </div>
+
+  <!-- SCORE SCREEN (hidden initially) -->
+  <div class="score-screen" id="scoreScreen" style="display:none">
+    <div style="font-size:2.5rem">🏆</div>
+    <div class="grade" id="gradeLetter"></div>
+    <div class="score-big" id="scoreBig"></div>
+    <div class="remark" id="remarkText"></div>
+    <button class="restart-btn" onclick="startQuiz()">Try Again</button>
+  </div>
+
+</div>
+
+<script>
+// ── QUESTIONS ────────────────────────────────────────────
+const questions = [
+  {
+    question: "What does DOM stand for in web development?",
+    options: ["Document Object Model", "Data Object Management", "Display Output Mode", "Dynamic Order Mechanism"],
+    correct: 0
+  },
+  {
+    question: "Which JavaScript method is used to select an element by its ID?",
+    options: ["querySelector()", "getElementsByClass()", "getElementById()", "selectById()"],
+    correct: 2
+  },
+  {
+    question: "Which keyword is used to declare a variable that cannot be reassigned?",
+    options: ["var", "let", "const", "static"],
+    correct: 2
+  },
+  {
+    question: "What does JSON stand for?",
+    options: ["Java Simple Object Notation", "JavaScript Object Notation", "Java Sequential Output Node", "JavaScript Ordered Numbers"],
+    correct: 1
+  },
+  {
+    question: "Which event fires when a user clicks a button?",
+    options: ["onhover", "onpress", "onclick", "onaction"],
+    correct: 2
+  },
+  {
+    question: "What is the correct way to add an item to the end of a JavaScript array?",
+    options: ["array.add(item)", "array.push(item)", "array.append(item)", "array.insert(item)"],
+    correct: 1
+  },
+];
+
+let currentIndex = 0;
+let score = 0;
+let answered = false;
+
+function startQuiz() {
+  currentIndex = 0;
+  score = 0;
+  document.getElementById("questionArea").style.display = "block";
+  document.getElementById("scoreScreen").style.display  = "none";
+  showQuestion();
+}
+
+function showQuestion() {
+  answered = false;
+  const q  = questions[currentIndex];
+  const total = questions.length;
+
+  // Progress bar
+  document.getElementById("progressFill").style.width = `${(currentIndex / total) * 100}%`;
+  document.getElementById("questionNum").textContent   = `Question ${currentIndex + 1} of ${total}`;
+  document.getElementById("questionText").textContent  = q.question;
+  document.getElementById("feedback").textContent      = "";
+  document.getElementById("feedback").className        = "feedback";
+  document.getElementById("nextBtn").style.display     = "none";
+
+  // Build option buttons
+  const container = document.getElementById("optionsContainer");
+  container.innerHTML = q.options.map((opt, i) => `
+    <button class="option-btn" onclick="selectAnswer(${i})">${opt}</button>
+  `).join('');
+}
+
+function selectAnswer(chosenIndex) {
+  if (answered) return;
+  answered = true;
+
+  const q       = questions[currentIndex];
+  const buttons = document.querySelectorAll(".option-btn");
+  const feedback = document.getElementById("feedback");
+
+  // Disable all buttons
+  buttons.forEach(btn => btn.disabled = true);
+
+  if (chosenIndex === q.correct) {
+    buttons[chosenIndex].classList.add("correct");
+    feedback.textContent  = "✅ Correct! Well done.";
+    feedback.className    = "feedback correct";
+    score++;
+  } else {
+    buttons[chosenIndex].classList.add("wrong");
+    buttons[q.correct].classList.add("reveal"); // show right answer
+    feedback.textContent  = `❌ Wrong! The correct answer was: "${q.options[q.correct]}"`;
+    feedback.className    = "feedback wrong";
+  }
+
+  document.getElementById("nextBtn").style.display = "block";
+  document.getElementById("nextBtn").textContent =
+    currentIndex + 1 < questions.length ? "Next Question →" : "See My Score 🏆";
+}
+
+function nextQuestion() {
+  currentIndex++;
+  if (currentIndex < questions.length) {
+    showQuestion();
+  } else {
+    showScore();
+  }
+}
+
+function showScore() {
+  document.getElementById("progressFill").style.width = "100%";
+  document.getElementById("questionArea").style.display = "none";
+  document.getElementById("scoreScreen").style.display  = "block";
+
+  const total      = questions.length;
+  const percentage = Math.round((score / total) * 100);
+
+  document.getElementById("scoreBig").textContent = `${score} / ${total}  (${percentage}%)`;
+
+  // Grade and remark
+  let grade, remark;
+  if (percentage >= 70) { grade = "A";  remark = "🌟 Excellent! Outstanding performance!"; }
+  else if (percentage >= 60) { grade = "B";  remark = "👍 Good job! A solid performance."; }
+  else if (percentage >= 50) { grade = "C";  remark = "😊 Fair. You passed — keep it up!"; }
+  else if (percentage >= 45) { grade = "D";  remark = "😐 Below average. Study more carefully."; }
+  else                        { grade = "F";  remark = "😔 Failed. Don't give up — try again!"; }
+
+  document.getElementById("gradeLetter").textContent = `Grade: ${grade}`;
+  document.getElementById("remarkText").textContent  = remark;
+}
+
+// ── START ────────────────────────────────────────────────
+startQuiz();
+</script>
+</body>
+</html>
